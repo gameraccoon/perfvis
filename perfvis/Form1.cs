@@ -122,7 +122,9 @@ namespace perfvis
 
         private void updateDataBtn_Click(object sender, System.EventArgs e)
         {
-
+            performanceData = PerformanceDataJsonReader.ReadFromJson("perfdata.json");
+            visualCaches.updateFromData(performanceData);
+            Invalidate();
         }
 
         private void trackBar1_Scroll(object sender, System.EventArgs e)

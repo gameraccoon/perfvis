@@ -1,0 +1,31 @@
+{
+	"frames" : [
+		{
+			"tasks": [
+				{
+					"threadId": 0,
+					"timeStart": 20,
+					"timeFinish": 30,
+					"taskNameIdx": 0
+				},
+				{
+					"threadId": 0,
+					"timeStart": 30,
+					"timeFinish": 40,
+					"taskNameIdx": 1
+				},
+				{
+					"threadId": 1,
+					"timeStart": 30,
+					"timeFinish": 45,
+					"taskNameIdx": 2
+				}
+			]
+		}
+	],
+	"taskNames": [
+		"Task1",
+		"Task2",
+		"Task3"
+	]
+}
