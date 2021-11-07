@@ -1,6 +1,7 @@
 ﻿using perfvis.Caches;
 using perfvis.Model;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 namespace perfvis
@@ -24,6 +25,12 @@ namespace perfvis
             populateTestData();
 
             ResizeRedraw = true;
+        }
+
+        private void Form1_Load(object sender, System.EventArgs e)
+        {
+            string workingDirectory = Path.GetDirectoryName(Application.StartupPath);
+            openPerfFileDialog.InitialDirectory = workingDirectory;
         }
 
         private void Form1_Paint(object sender, PaintEventArgs e)
@@ -120,17 +127,35 @@ namespace perfvis
             }
         }
 
-        private void updateDataBtn_Click(object sender, System.EventArgs e)
-        {
-            performanceData = PerformanceDataJsonReader.ReadFromJson("perfdata.json");
-            visualCaches.updateFromData(performanceData);
-            Invalidate();
-        }
-
         private void trackBar1_Scroll(object sender, System.EventArgs e)
         {
             scale = (1 + trackBar1.Value) / ((trackBar1.Maximum + 2) * 0.5f);
             Invalidate();
+        }
+
+        private void openPerfFileDialog_FileOk(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+
+            try
+            {
+                performanceData = PerformanceDataJsonReader.ReadFromJson(openPerfFileDialog.FileName);
+                visualCaches.updateFromData(performanceData);
+                Invalidate();
+            }
+            catch (System.Exception exception)
+            {
+                MessageBox.Show(exception.Message, "Json read error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void openToolStripMenuItem_Click(object sender, System.EventArgs e)
+        {
+            openPerfFileDialog.ShowDialog();
+        }
+
+        private void exitToolStripMenuItem_Click(object sender, System.EventArgs e)
+        {
+            Application.Exit();
         }
     }
 }
