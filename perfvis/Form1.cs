@@ -31,7 +31,7 @@ namespace perfvis
             RectangleF visibleClipBounds = e.Graphics.VisibleClipBounds;
             Pen defaultPen = Pens.Black;
             Brush defaultBrush = Brushes.Black;
-            Font taskFont = new Font(FontFamily.GenericMonospace, (int)(10 * scale));
+            Font taskFont = new Font(FontFamily.GenericMonospace, (int)(8));
 
             Point viewportStartPos = new Point((int)visibleClipBounds.Left, (int)visibleClipBounds.Top);
             Point viewportEndPos = new Point((int)visibleClipBounds.Right, (int)visibleClipBounds.Bottom);
@@ -40,7 +40,7 @@ namespace perfvis
             float threadVerticalSpacing = 10.0f * scale;
             float threadLineTotalHeight = threadHeight + threadVerticalSpacing;
 
-            float timeScale = visibleClipBounds.Width / visualCaches.totalDuration * scale;
+            float timeScale = visibleClipBounds.Width / visualCaches.averageFrameDuration * scale;
 
             foreach (FrameData frame in performanceData.frames)
             {
