@@ -6,9 +6,17 @@ namespace perfvis.Caches
 {
     class PerformanceVisualizationCaches
     {
+        public List<int> threads = new List<int>();
+        public long minTime = 0;
+        public long maxTime = 0;
+        public long totalDuration = 0;
+        public long averageFrameDuration = 0;
+        public List<long> frameStartTimes = new List<long>();
+
         public void updateFromData(PerformanceData data)
         {
             threads.Clear();
+            frameStartTimes.Clear();
 
             minTime = long.MaxValue;
             maxTime = long.MinValue;
@@ -18,6 +26,7 @@ namespace perfvis.Caches
 
             foreach (FrameData frame in data.frames)
             {
+                long minStartTime = long.MaxValue;
                 foreach (TaskData taskData in frame.tasks)
                 {
                     if (!threads.Contains(taskData.threadId))
@@ -25,23 +34,20 @@ namespace perfvis.Caches
                         threads.Add(taskData.threadId);
                     }
 
-                    minTime = Math.Min(minTime, taskData.timeStart);
+                    minStartTime = Math.Min(minStartTime, taskData.timeStart);
                     maxTime = Math.Max(maxTime, taskData.timeFinish);
 
                     // avoid overflows
                     tempAverageFrameDuration += ((taskData.timeFinish - taskData.timeStart) - tempAverageFrameDuration) * (1 / (systemsProcessed + 1.0f));
                     systemsProcessed++;
                 }
+
+                frameStartTimes.Add(minStartTime);
+                minTime = Math.Min(minTime, minStartTime);
             }
 
             totalDuration = maxTime - minTime;
             averageFrameDuration = Convert.ToInt64(tempAverageFrameDuration);
         }
-
-        public List<int> threads = new List<int>();
-        public long minTime = 0;
-        public long maxTime = 0;
-        public long totalDuration = 0;
-        public long averageFrameDuration = 0;
     }
 }

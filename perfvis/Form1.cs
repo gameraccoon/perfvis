@@ -1,5 +1,6 @@
 ﻿using perfvis.Caches;
 using perfvis.Model;
+using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -11,9 +12,11 @@ namespace perfvis
 
         private PerformanceData performanceData = new PerformanceData();
         private PerformanceVisualizationCaches visualCaches = new PerformanceVisualizationCaches();
-        
-        private Point drawShift;
+
+        private RectangleF renderViewportCoordinates;
+        private PointF drawShift;
         private float scale = 1.0f;
+        private int fontSize = 8;
 
         private bool isMouseDown = false;
         private Point lastMouseLocation = new Point(0, 0);
@@ -21,101 +24,49 @@ namespace perfvis
         public Form1()
         {
             InitializeComponent();
-
-            populateTestData();
-
-            ResizeRedraw = true;
         }
 
         private void Form1_Load(object sender, System.EventArgs e)
         {
             string workingDirectory = Path.GetDirectoryName(Application.StartupPath);
             openPerfFileDialog.InitialDirectory = workingDirectory;
+
+            updateRenderViewportSize();
+
+            setStatusText("Ready. Press \"File -> Open\" to open profile data");
         }
 
-        private void Form1_Paint(object sender, PaintEventArgs e)
+        private void renderPanel_Paint(object sender, PaintEventArgs e)
         {
-            RectangleF visibleClipBounds = e.Graphics.VisibleClipBounds;
             Pen defaultPen = Pens.Black;
             Brush defaultBrush = Brushes.Black;
-            Font taskFont = new Font(FontFamily.GenericMonospace, (int)(8));
+            Font taskFont = new Font(FontFamily.GenericMonospace, fontSize);
 
-            Point viewportStartPos = new Point((int)visibleClipBounds.Left, (int)visibleClipBounds.Top);
-            Point viewportEndPos = new Point((int)visibleClipBounds.Right, (int)visibleClipBounds.Bottom);
+            PointF viewportStartPos = new PointF(renderViewportCoordinates.Left, renderViewportCoordinates.Top);
 
             float threadHeight = 50.0f * scale;
             float threadVerticalSpacing = 10.0f * scale;
             float threadLineTotalHeight = threadHeight + threadVerticalSpacing;
-
-            float timeScale = visibleClipBounds.Width / visualCaches.averageFrameDuration * scale;
 
             foreach (FrameData frame in performanceData.frames)
             {
                 foreach (TaskData taskData in frame.tasks)
                 {
                     int index = visualCaches.threads.IndexOf(taskData.threadId);
-                    Point boxStartPos = new Point((int)(viewportStartPos.X + (taskData.timeStart - visualCaches.minTime) * timeScale + drawShift.X), (int)(viewportStartPos.Y + index * threadLineTotalHeight + drawShift.Y));
-                    Size boxSize = new Size((int)((taskData.timeFinish - taskData.timeStart) * timeScale), (int)threadHeight);
+                    Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(taskData.timeStart) + drawShift.X), (int)(viewportStartPos.Y + index * threadLineTotalHeight + drawShift.Y));
+                    Size boxSize = new Size((int)scaleTimeToScreen(taskData.timeFinish - taskData.timeStart), (int)threadHeight);
                     e.Graphics.DrawRectangle(defaultPen, new Rectangle(boxStartPos, boxSize));
                     e.Graphics.DrawString(performanceData.taskNames[taskData.taskNameIdx], taskFont, defaultBrush, boxStartPos);
                 }
             }
         }
 
-        private void populateTestData()
+        private void updateRenderViewportSize()
         {
-            performanceData = new PerformanceData();
-            performanceData.taskNames.Add("Task0");
-            performanceData.taskNames.Add("Task1");
-            performanceData.taskNames.Add("Task2");
-            performanceData.taskNames.Add("Task3");
-            performanceData.taskNames.Add("Task4");
-            performanceData.taskNames.Add("Task5");
-
-            {
-                FrameData frameData = new FrameData();
-                frameData.tasks.Add(new TaskData(0, 1000, 3000, 0));
-                frameData.tasks.Add(new TaskData(0, 3050, 5000, 1));
-                frameData.tasks.Add(new TaskData(0, 5010, 7000, 2));
-                frameData.tasks.Add(new TaskData(0, 7000, 8000, 3));
-                performanceData.frames.Add(frameData);
-            }
-
-            {
-                FrameData frameData = new FrameData();
-                frameData.tasks.Add(new TaskData(0, 9000, 10000, 0));
-                frameData.tasks.Add(new TaskData(0, 10050, 12000, 1));
-                frameData.tasks.Add(new TaskData(1, 10070, 13000, 4));
-                frameData.tasks.Add(new TaskData(0, 12010, 13000, 2));
-                frameData.tasks.Add(new TaskData(0, 13000, 14000, 3));
-                performanceData.frames.Add(frameData);
-            }
-
-            visualCaches.updateFromData(performanceData);
-        }
-
-        private void Form1_MouseDown(object sender, MouseEventArgs e)
-        {
-            isMouseDown = true;
-            lastMouseLocation.X = e.X;
-            lastMouseLocation.Y = e.Y;
-        }
-
-        private void Form1_MouseUp(object sender, MouseEventArgs e)
-        {
-            isMouseDown = false;
-        }
-
-        private void Form1_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (isMouseDown)
-            {
-                drawShift.X += e.X - lastMouseLocation.X;
-                drawShift.Y += e.Y - lastMouseLocation.Y;
-                lastMouseLocation.X = e.X;
-                lastMouseLocation.Y = e.Y;
-                Invalidate();
-            }
+            renderViewportCoordinates.X = 0;
+            renderViewportCoordinates.Y = 0;
+            renderViewportCoordinates.Width = renderPanel.Width;
+            renderViewportCoordinates.Height = renderPanel.Height;
         }
 
         private void Form1_Scroll(object sender, ScrollEventArgs e)
@@ -123,14 +74,21 @@ namespace perfvis
             if (e.ScrollOrientation == ScrollOrientation.VerticalScroll)
             {
                 scale *= (e.NewValue - e.OldValue);
-                Invalidate();
+                renderPanel.Invalidate();
             }
         }
 
         private void trackBar1_Scroll(object sender, System.EventArgs e)
         {
-            scale = (1 + trackBar1.Value) / ((trackBar1.Maximum + 2) * 0.5f);
-            Invalidate();
+            float previousScale = scale;
+            scale = (1 + scaleTrackBar.Value) / ((scaleTrackBar.Maximum + 2) * 0.5f);
+
+            PointF scaleCenterPosition = new PointF(renderViewportCoordinates.Width / 2.0f, renderViewportCoordinates.Height / 2.0f);
+
+            drawShift.X = drawShift.X * scale / previousScale - (scaleCenterPosition.X * scale / previousScale - scaleCenterPosition.X);
+            drawShift.Y = drawShift.Y * scale / previousScale - (scaleCenterPosition.Y * scale / previousScale - scaleCenterPosition.Y);
+
+            renderPanel.Invalidate();
         }
 
         private void openPerfFileDialog_FileOk(object sender, System.ComponentModel.CancelEventArgs e)
@@ -140,12 +98,14 @@ namespace perfvis
             {
                 performanceData = PerformanceDataJsonReader.ReadFromJson(openPerfFileDialog.FileName);
                 visualCaches.updateFromData(performanceData);
-                Invalidate();
+                renderPanel.Invalidate();
             }
             catch (System.Exception exception)
             {
                 MessageBox.Show(exception.Message, "Json read error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            setStatusText("Ready");
+            updateFrameTrack();
         }
 
         private void openToolStripMenuItem_Click(object sender, System.EventArgs e)
@@ -156,6 +116,72 @@ namespace perfvis
         private void exitToolStripMenuItem_Click(object sender, System.EventArgs e)
         {
             Application.Exit();
+        }
+
+        private void renderPanel_MouseDown(object sender, MouseEventArgs e)
+        {
+            isMouseDown = true;
+            lastMouseLocation.X = e.X;
+            lastMouseLocation.Y = e.Y;
+        }
+
+        private void renderPanel_MouseUp(object sender, MouseEventArgs e)
+        {
+            isMouseDown = false;
+        }
+
+        private void renderPanel_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (isMouseDown)
+            {
+                drawShift.X += e.X - lastMouseLocation.X;
+                drawShift.Y += e.Y - lastMouseLocation.Y;
+                lastMouseLocation.X = e.X;
+                lastMouseLocation.Y = e.Y;
+                renderPanel.Invalidate();
+            }
+        }
+
+        private void renderPanel_Resize(object sender, System.EventArgs e)
+        {
+            updateRenderViewportSize();
+            renderPanel.Invalidate();
+        }
+
+        private void setStatusText(string newStatusText)
+        {
+            toolStripStatusLabel.Text = newStatusText;
+        }
+
+        private void trackBar2_Scroll(object sender, System.EventArgs e)
+        {
+            fontSize = fontSizeTrackBar.Value;
+            renderPanel.Invalidate();
+        }
+
+        private void framesTrackBar_Scroll(object sender, System.EventArgs e)
+        {
+            if (framesTrackBar.Value >= 0 && framesTrackBar.Value < visualCaches.frameStartTimes.Count)
+            {
+                drawShift.X = -getPositionFromTime(visualCaches.frameStartTimes[framesTrackBar.Value]);
+                renderPanel.Invalidate();
+            }
+        }
+
+        private void updateFrameTrack()
+        {
+            framesTrackBar.Maximum = Math.Max(performanceData.frames.Count - 1, 0);
+        }
+
+        private float getPositionFromTime(long time)
+        {
+            return scaleTimeToScreen(time - visualCaches.minTime);
+        }
+
+        private float scaleTimeToScreen(long time)
+        {
+            float timeScale = renderViewportCoordinates.Width / visualCaches.averageFrameDuration * scale;
+            return time * timeScale;
         }
     }
 }

@@ -21,6 +21,28 @@
 					"taskNameIdx": 2
 				}
 			]
+		},
+		{
+			"tasks": [
+				{
+					"threadId": 0,
+					"timeStart": 50,
+					"timeFinish": 60,
+					"taskNameIdx": 0
+				},
+				{
+					"threadId": 0,
+					"timeStart": 60,
+					"timeFinish": 70,
+					"taskNameIdx": 1
+				},
+				{
+					"threadId": 1,
+					"timeStart": 60,
+					"timeFinish": 65,
+					"taskNameIdx": 2
+				}
+			]
 		}
 	],
 	"taskNames": [
