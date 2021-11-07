@@ -48,6 +48,15 @@ namespace perfvis
             float threadVerticalSpacing = 10.0f * scale;
             float threadLineTotalHeight = threadHeight + threadVerticalSpacing;
 
+            e.Graphics.DrawLine(defaultPen, renderViewportCoordinates.Left, renderViewportCoordinates.Top, renderViewportCoordinates.Right, renderViewportCoordinates.Top);
+            for (int frameIndex = 0; frameIndex < visualCaches.frameStartTimes.Count; frameIndex++)
+            {
+                long frameStart = visualCaches.frameStartTimes[frameIndex];
+                float posX = viewportStartPos.X + getPositionFromTime(frameStart) + drawShift.X;
+                e.Graphics.DrawLine(defaultPen, posX, renderViewportCoordinates.Top, posX, renderViewportCoordinates.Top + 10);
+                e.Graphics.DrawString(string.Format("Frame{0}", frameIndex), taskFont, defaultBrush, new Point((int)posX, (int)renderViewportCoordinates.Top));
+            }
+
             foreach (FrameData frame in performanceData.frames)
             {
                 foreach (TaskData taskData in frame.tasks)
