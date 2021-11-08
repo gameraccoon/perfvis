@@ -13,13 +13,17 @@ namespace perfvis
         private PerformanceData performanceData = new PerformanceData();
         private PerformanceVisualizationCaches visualCaches = new PerformanceVisualizationCaches();
 
-        private RectangleF renderViewportCoordinates;
-        private PointF drawShift;
+        private RectangleF renderViewportCoordinates = new RectangleF();
+        private PointF drawShift = new PointF();
         private float scale = 1.0f;
         private int fontSize = 8;
 
         private bool isMouseDown = false;
         private Point lastMouseLocation = new Point(0, 0);
+
+
+        private Pen defaultPen = Pens.Black;
+        private Brush defaultBrush = Brushes.Black;
 
         public Form1()
         {
@@ -38,8 +42,6 @@ namespace perfvis
 
         private void renderPanel_Paint(object sender, PaintEventArgs e)
         {
-            Pen defaultPen = Pens.Black;
-            Brush defaultBrush = Brushes.Black;
             Font taskFont = new Font(FontFamily.GenericMonospace, fontSize);
 
             PointF viewportStartPos = new PointF(renderViewportCoordinates.Left, renderViewportCoordinates.Top);
@@ -48,11 +50,16 @@ namespace perfvis
             float threadVerticalSpacing = 10.0f * scale;
             float threadLineTotalHeight = threadHeight + threadVerticalSpacing;
 
+            float timeScale = getTimeScale();
+
+            long minVisibleTime = getTimeFromPosition(renderViewportCoordinates.Left - drawShift.X, timeScale);
+            long maxVisibleTime = getTimeFromPosition(renderViewportCoordinates.Right - drawShift.X, timeScale);
+
             e.Graphics.DrawLine(defaultPen, renderViewportCoordinates.Left, renderViewportCoordinates.Top, renderViewportCoordinates.Right, renderViewportCoordinates.Top);
             for (int frameIndex = 0; frameIndex < visualCaches.frameStartTimes.Count; frameIndex++)
             {
                 long frameStart = visualCaches.frameStartTimes[frameIndex];
-                float posX = viewportStartPos.X + getPositionFromTime(frameStart) + drawShift.X;
+                float posX = viewportStartPos.X + getPositionFromTime(frameStart, timeScale) + drawShift.X;
                 e.Graphics.DrawLine(defaultPen, posX, renderViewportCoordinates.Top, posX, renderViewportCoordinates.Top + 10);
                 e.Graphics.DrawString(string.Format("Frame{0}", frameIndex), taskFont, defaultBrush, new Point((int)posX, (int)renderViewportCoordinates.Top));
             }
@@ -61,12 +68,25 @@ namespace perfvis
             {
                 foreach (TaskData taskData in frame.tasks)
                 {
-                    int index = visualCaches.threads.IndexOf(taskData.threadId);
-                    Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(taskData.timeStart) + drawShift.X), (int)(viewportStartPos.Y + index * threadLineTotalHeight + drawShift.Y));
-                    Size boxSize = new Size((int)scaleTimeToScreen(taskData.timeFinish - taskData.timeStart), (int)threadHeight);
-                    e.Graphics.DrawRectangle(defaultPen, new Rectangle(boxStartPos, boxSize));
-                    e.Graphics.DrawString(performanceData.taskNames[taskData.taskNameIdx], taskFont, defaultBrush, boxStartPos);
+                    renderTaskData(e.Graphics, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadLineTotalHeight, threadHeight, taskFont);
                 }
+            }
+
+            foreach (TaskData taskData in performanceData.nonFrameTasks)
+            {
+                renderTaskData(e.Graphics, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadLineTotalHeight, threadHeight, taskFont);
+            }
+        }
+
+        private void renderTaskData(Graphics g, TaskData taskData, long minVisibleTime, long maxVisibleTime, PointF viewportStartPos, float timeScale, float threadLineTotalHeight, float threadHeight, Font taskFont)
+        {
+            if (taskData.timeFinish > minVisibleTime && taskData.timeStart < maxVisibleTime)
+            {
+                int index = visualCaches.threads.IndexOf(taskData.threadId);
+                Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(taskData.timeStart, timeScale) + drawShift.X), (int)(viewportStartPos.Y + index * threadLineTotalHeight + drawShift.Y));
+                Size boxSize = new Size((int)scaleTimeToScreen(taskData.timeFinish - taskData.timeStart, timeScale), (int)threadHeight);
+                g.DrawRectangle(defaultPen, new Rectangle(boxStartPos, boxSize));
+                g.DrawString(performanceData.taskNames[taskData.taskNameIdx], taskFont, defaultBrush, boxStartPos);
             }
         }
 
@@ -172,7 +192,7 @@ namespace perfvis
         {
             if (framesTrackBar.Value >= 0 && framesTrackBar.Value < visualCaches.frameStartTimes.Count)
             {
-                drawShift.X = -getPositionFromTime(visualCaches.frameStartTimes[framesTrackBar.Value]);
+                drawShift.X = -getPositionFromTime(visualCaches.frameStartTimes[framesTrackBar.Value], getTimeScale());
                 renderPanel.Invalidate();
             }
         }
@@ -182,15 +202,24 @@ namespace perfvis
             framesTrackBar.Maximum = Math.Max(performanceData.frames.Count - 1, 0);
         }
 
-        private float getPositionFromTime(long time)
+        private float getPositionFromTime(long time, float timeScale)
         {
-            return scaleTimeToScreen(time - visualCaches.minTime);
+            return scaleTimeToScreen(time - visualCaches.minTime, timeScale);
         }
 
-        private float scaleTimeToScreen(long time)
+        private long getTimeFromPosition(float positionX, float timeScale)
         {
-            float timeScale = renderViewportCoordinates.Width / visualCaches.averageFrameDuration * scale;
+            return visualCaches.minTime + Convert.ToInt64(positionX / timeScale);
+        }
+
+        private float scaleTimeToScreen(long time, float timeScale)
+        {
             return time * timeScale;
+        }
+
+        private float getTimeScale()
+        {
+            return renderViewportCoordinates.Width / visualCaches.averageFrameDuration * scale;
         }
     }
 }

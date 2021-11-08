@@ -46,6 +46,17 @@ namespace perfvis.Caches
                 minTime = Math.Min(minTime, minStartTime);
             }
 
+            foreach (TaskData taskData in data.nonFrameTasks)
+            {
+                if (!threads.Contains(taskData.threadId))
+                {
+                    threads.Add(taskData.threadId);
+
+                    minTime = Math.Min(minTime, taskData.timeStart);
+                    maxTime = Math.Max(maxTime, taskData.timeFinish);
+                }
+            }
+
             totalDuration = maxTime - minTime;
             averageFrameDuration = Convert.ToInt64(tempAverageFrameDuration);
         }

@@ -28,5 +28,6 @@ namespace perfvis.Model
     {
         public List<FrameData> frames = new List<FrameData>();
         public List<string> taskNames = new List<string>();
+        public List<TaskData> nonFrameTasks = new List<TaskData>();
     }
 }
