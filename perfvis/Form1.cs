@@ -86,7 +86,7 @@ namespace perfvis
                 Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(taskData.timeStart, timeScale) + drawShift.X), (int)(viewportStartPos.Y + index * threadLineTotalHeight + drawShift.Y));
                 Size boxSize = new Size((int)scaleTimeToScreen(taskData.timeFinish - taskData.timeStart, timeScale), (int)threadHeight);
                 g.DrawRectangle(defaultPen, new Rectangle(boxStartPos, boxSize));
-                g.DrawString(performanceData.taskNames[taskData.taskNameIdx], taskFont, defaultBrush, boxStartPos);
+                g.DrawString(performanceData.taskNames[taskData.taskNameIdx], taskFont, defaultBrush, new Point(Math.Max(boxStartPos.X, (int)renderViewportCoordinates.Left), boxStartPos.Y));
             }
         }
 
