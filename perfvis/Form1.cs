@@ -123,9 +123,14 @@ namespace perfvis
 
         private void renderTextForBox(Graphics g, string text, Point boxStartPos, Size boxSize, Font taskFont)
         {
-            float offsettedX = Math.Max(boxStartPos.X, (int)renderViewportCoordinates.Left);
-            RectangleF textRectangle = new RectangleF(offsettedX, boxStartPos.Y, boxSize.Width, boxSize.Height);
-            g.DrawString(text, taskFont, defaultBrush, textRectangle);
+            float positionX = Math.Max(boxStartPos.X, (int)renderViewportCoordinates.Left);
+            float width = boxSize.Width - positionX + boxStartPos.X;
+            float height = boxSize.Height;
+            if (width > 1.0f && height > 1.0f)
+            {
+                RectangleF textRectangle = new RectangleF(positionX, boxStartPos.Y, width, height);
+                g.DrawString(text, taskFont, defaultBrush, textRectangle);
+            }
         }
 
         private int getThreadYPos(int threadId, float threadLineTotalHeight, PointF viewportStartPos)
