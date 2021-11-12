@@ -30,9 +30,6 @@ namespace perfvis
         public Form1()
         {
             InitializeComponent();
-
-            currentContext = BufferedGraphicsManager.Current;
-            renderPanelBuffer = currentContext.Allocate(CreateGraphics(), renderPanel.DisplayRectangle);
         }
 
         private void Form1_Load(object sender, System.EventArgs e)
@@ -45,6 +42,9 @@ namespace perfvis
             setStatusText("Ready. Press \"File -> Open\" to open profile data");
 
             renderPanel.MouseWheel += new MouseEventHandler(renderPanel_MouseWheel);
+
+            currentContext = BufferedGraphicsManager.Current;
+            renderPanelBuffer = currentContext.Allocate(CreateGraphics(), renderPanel.DisplayRectangle);
         }
 
         private void renderToBuffer(Graphics g)
@@ -221,9 +221,12 @@ namespace perfvis
 
         private void renderPanel_Resize(object sender, System.EventArgs e)
         {
-            renderPanelBuffer = currentContext.Allocate(CreateGraphics(), renderPanel.DisplayRectangle);
-            updateRenderViewportSize();
-            render();
+            if (currentContext != null)
+            {
+                renderPanelBuffer = currentContext.Allocate(CreateGraphics(), renderPanel.DisplayRectangle);
+                updateRenderViewportSize();
+                render();
+            }
         }
 
         private void setStatusText(string newStatusText)
