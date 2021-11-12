@@ -21,7 +21,6 @@ namespace perfvis
         private bool isMouseDown = false;
         private Point lastMouseLocation = new Point(0, 0);
 
-
         private Pen defaultPen = Pens.Black;
         private Brush defaultBrush = Brushes.Black;
 
@@ -47,6 +46,7 @@ namespace perfvis
             PointF viewportStartPos = new PointF(renderViewportCoordinates.Left, renderViewportCoordinates.Top);
 
             float threadHeight = 50.0f * scale;
+            float scopeRecordHeight = 10.0f * scale;
             float threadVerticalSpacing = 10.0f * scale;
             float threadLineTotalHeight = threadHeight + threadVerticalSpacing;
 
@@ -68,26 +68,62 @@ namespace perfvis
             {
                 foreach (TaskData taskData in frame.tasks)
                 {
-                    renderTaskData(e.Graphics, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadLineTotalHeight, threadHeight, taskFont);
+                    int posY = getThreadYPos(taskData.threadId, threadLineTotalHeight, viewportStartPos);
+                    renderTaskData(e.Graphics, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, posY, threadHeight, taskFont);
                 }
             }
 
             foreach (TaskData taskData in performanceData.nonFrameTasks)
             {
-                renderTaskData(e.Graphics, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadLineTotalHeight, threadHeight, taskFont);
+                int posY = getThreadYPos(taskData.threadId, threadLineTotalHeight, viewportStartPos);
+                renderTaskData(e.Graphics, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, posY, threadHeight, taskFont);
+            }
+
+            foreach (ScopeThreadRecords scopeThreadRecords in performanceData.scopeRecords)
+            {
+                int threadPosY = getThreadYPos(scopeThreadRecords.threadId, threadLineTotalHeight, viewportStartPos) + (int)threadHeight;
+                foreach (ScopeRecord record in scopeThreadRecords.records)
+                {
+                    renderScopeRecord(e.Graphics, record, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadPosY, scopeRecordHeight, taskFont);
+                }
             }
         }
 
-        private void renderTaskData(Graphics g, TaskData taskData, long minVisibleTime, long maxVisibleTime, PointF viewportStartPos, float timeScale, float threadLineTotalHeight, float threadHeight, Font taskFont)
+        private void renderTaskData(Graphics g, TaskData taskData, long minVisibleTime, long maxVisibleTime, PointF viewportStartPos, float timeScale, int posY, float threadHeight, Font taskFont)
         {
             if (taskData.timeFinish > minVisibleTime && taskData.timeStart < maxVisibleTime)
             {
-                int index = visualCaches.threads.IndexOf(taskData.threadId);
-                Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(taskData.timeStart, timeScale) + drawShift.X), (int)(viewportStartPos.Y + index * threadLineTotalHeight + drawShift.Y));
+                Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(taskData.timeStart, timeScale) + drawShift.X), posY);
                 Size boxSize = new Size((int)scaleTimeToScreen(taskData.timeFinish - taskData.timeStart, timeScale), (int)threadHeight);
                 g.DrawRectangle(defaultPen, new Rectangle(boxStartPos, boxSize));
-                g.DrawString(performanceData.taskNames[taskData.taskNameIdx], taskFont, defaultBrush, new Point(Math.Max(boxStartPos.X, (int)renderViewportCoordinates.Left), boxStartPos.Y));
+
+                float offsettedX = Math.Max(boxStartPos.X, (int)renderViewportCoordinates.Left);
+                RectangleF textRectangle = new RectangleF(offsettedX, boxStartPos.Y, boxSize.Width, boxSize.Height);
+                g.DrawString(performanceData.taskNames[taskData.taskNameIdx], taskFont, defaultBrush, textRectangle);
             }
+        }
+
+        private void renderScopeRecord(Graphics g, ScopeRecord scopeRecord, long minVisibleTime, long maxVisibleTime, PointF viewportStartPos, float timeScale, int threadPosY, float scopeRecordHeight, Font taskFont)
+        {
+            if (scopeRecord.timeFinish > minVisibleTime && scopeRecord.timeStart < maxVisibleTime)
+            {
+                Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(scopeRecord.timeStart, timeScale) + drawShift.X), (int)(threadPosY + scopeRecordHeight * scopeRecord.stackDepth));
+                Size boxSize = new Size((int)scaleTimeToScreen(scopeRecord.timeFinish - scopeRecord.timeStart, timeScale), (int)scopeRecordHeight);
+                g.DrawRectangle(defaultPen, new Rectangle(boxStartPos, boxSize));
+
+                RectangleF textRectangle = new RectangleF(boxStartPos.X, boxStartPos.Y, boxSize.Width, boxSize.Height);
+                g.DrawString(scopeRecord.scopeName, taskFont, defaultBrush, textRectangle);
+            }
+        }
+
+        private void drawTextForBox()
+        {
+        }
+
+        private int getThreadYPos(int threadId, float threadLineTotalHeight, PointF viewportStartPos)
+        {
+            int threadIndex = visualCaches.threads.IndexOf(threadId);
+            return (int)(viewportStartPos.Y + threadIndex * threadLineTotalHeight + drawShift.Y);
         }
 
         private void updateRenderViewportSize()

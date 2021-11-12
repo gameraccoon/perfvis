@@ -4,20 +4,20 @@
 			"tasks": [
 				{
 					"threadId": 0,
-					"timeStart": 20,
-					"timeFinish": 30,
+					"timeStart": 200,
+					"timeFinish": 300,
 					"taskNameIdx": 0
 				},
 				{
 					"threadId": 0,
-					"timeStart": 30,
-					"timeFinish": 40,
+					"timeStart": 302,
+					"timeFinish": 400,
 					"taskNameIdx": 1
 				},
 				{
 					"threadId": 1,
-					"timeStart": 30,
-					"timeFinish": 45,
+					"timeStart": 310,
+					"timeFinish": 450,
 					"taskNameIdx": 2
 				}
 			]
@@ -26,28 +26,69 @@
 			"tasks": [
 				{
 					"threadId": 0,
-					"timeStart": 50,
-					"timeFinish": 60,
+					"timeStart": 500,
+					"timeFinish": 600,
 					"taskNameIdx": 0
 				},
 				{
 					"threadId": 0,
-					"timeStart": 60,
-					"timeFinish": 70,
+					"timeStart": 609,
+					"timeFinish": 700,
 					"taskNameIdx": 1
 				},
 				{
 					"threadId": 1,
-					"timeStart": 60,
-					"timeFinish": 65,
+					"timeStart": 620,
+					"timeFinish": 650,
 					"taskNameIdx": 2
 				}
 			]
 		}
 	],
+    "nonFrameTasks": [
+        {
+            "threadId": 4,
+            "timeStart": 350,
+            "timeFinish": 600,
+            "taskNameIdx": 3
+        },
+        {
+            "threadId": 5,
+            "timeStart": 430,
+            "timeFinish": 650,
+            "taskNameIdx": 4
+        },
+    ],
+	"scopeRecords": [
+        {
+            "records": [
+                {
+                    "stackDepth": 1,
+                    "timeStart": 360,
+                    "timeFinish": 400,
+                    "scopeName": "Function1"
+                },
+                {
+                    "stackDepth": 1,
+                    "timeStart": 401,
+                    "timeFinish": 420,
+                    "scopeName": "Function2"
+                },
+                {
+                    "stackDepth": 2,
+                    "timeStart": 363,
+                    "timeFinish": 390,
+                    "scopeName": "Function3"
+                }
+            ],
+            "threadId": 4
+        }
+    ],
 	"taskNames": [
 		"Task1",
 		"Task2",
-		"Task3"
+		"Task3",
+		"Non-frame task1",
+		"Non-frame task2"
 	]
 }
