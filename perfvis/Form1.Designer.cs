@@ -34,20 +34,20 @@ namespace perfvis
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
-            this.renderPanel = new System.Windows.Forms.Panel();
             this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripProgressBar = new System.Windows.Forms.ToolStripProgressBar();
-            this.fontSizeTrackBar = new System.Windows.Forms.TrackBar();
+            this.renderPanel = new System.Windows.Forms.Panel();
             this.framesTrackBar = new System.Windows.Forms.TrackBar();
-            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+            this.fontSizeTrackBar = new System.Windows.Forms.TrackBar();
             ((System.ComponentModel.ISupportInitialize)(this.scaleTrackBar)).BeginInit();
             this.menuStrip1.SuspendLayout();
             this.statusStrip1.SuspendLayout();
             this.renderPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.fontSizeTrackBar)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.framesTrackBar)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.fontSizeTrackBar)).BeginInit();
             this.SuspendLayout();
             // 
             // scaleTrackBar
@@ -91,14 +91,19 @@ namespace perfvis
             // 
             this.openToolStripMenuItem.Name = "openToolStripMenuItem";
             this.openToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
-            this.openToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.openToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.openToolStripMenuItem.Text = "Open";
             this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
+            // 
+            // toolStripSeparator1
+            // 
+            this.toolStripSeparator1.Name = "toolStripSeparator1";
+            this.toolStripSeparator1.Size = new System.Drawing.Size(143, 6);
             // 
             // exitToolStripMenuItem
             // 
             this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            this.exitToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.exitToolStripMenuItem.Size = new System.Drawing.Size(146, 22);
             this.exitToolStripMenuItem.Text = "Exit";
             this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
             // 
@@ -113,24 +118,6 @@ namespace perfvis
             this.statusStrip1.TabIndex = 3;
             this.statusStrip1.Text = "statusStrip1";
             // 
-            // renderPanel
-            // 
-            this.renderPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.renderPanel.Controls.Add(this.framesTrackBar);
-            this.renderPanel.Controls.Add(this.fontSizeTrackBar);
-            this.renderPanel.Controls.Add(this.scaleTrackBar);
-            this.renderPanel.Location = new System.Drawing.Point(0, 27);
-            this.renderPanel.Name = "renderPanel";
-            this.renderPanel.Size = new System.Drawing.Size(800, 398);
-            this.renderPanel.TabIndex = 4;
-            this.renderPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.renderPanel_Paint);
-            this.renderPanel.MouseDown += new System.Windows.Forms.MouseEventHandler(this.renderPanel_MouseDown);
-            this.renderPanel.MouseMove += new System.Windows.Forms.MouseEventHandler(this.renderPanel_MouseMove);
-            this.renderPanel.MouseUp += new System.Windows.Forms.MouseEventHandler(this.renderPanel_MouseUp);
-            this.renderPanel.Resize += new System.EventHandler(this.renderPanel_Resize);
-            // 
             // toolStripStatusLabel
             // 
             this.toolStripStatusLabel.Name = "toolStripStatusLabel";
@@ -143,17 +130,22 @@ namespace perfvis
             this.toolStripProgressBar.Size = new System.Drawing.Size(100, 16);
             this.toolStripProgressBar.Visible = false;
             // 
-            // fontSizeTrackBar
+            // renderPanel
             // 
-            this.fontSizeTrackBar.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.fontSizeTrackBar.Location = new System.Drawing.Point(447, 350);
-            this.fontSizeTrackBar.Minimum = 5;
-            this.fontSizeTrackBar.Name = "fontSizeTrackBar";
-            this.fontSizeTrackBar.Size = new System.Drawing.Size(80, 45);
-            this.fontSizeTrackBar.TabIndex = 2;
-            this.fontSizeTrackBar.TickStyle = System.Windows.Forms.TickStyle.TopLeft;
-            this.fontSizeTrackBar.Value = 8;
-            this.fontSizeTrackBar.Scroll += new System.EventHandler(this.trackBar2_Scroll);
+            this.renderPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.renderPanel.Controls.Add(this.framesTrackBar);
+            this.renderPanel.Controls.Add(this.fontSizeTrackBar);
+            this.renderPanel.Controls.Add(this.scaleTrackBar);
+            this.renderPanel.Location = new System.Drawing.Point(0, 27);
+            this.renderPanel.Name = "renderPanel";
+            this.renderPanel.Size = new System.Drawing.Size(800, 398);
+            this.renderPanel.TabIndex = 4;
+            this.renderPanel.MouseDown += new System.Windows.Forms.MouseEventHandler(this.renderPanel_MouseDown);
+            this.renderPanel.MouseMove += new System.Windows.Forms.MouseEventHandler(this.renderPanel_MouseMove);
+            this.renderPanel.MouseUp += new System.Windows.Forms.MouseEventHandler(this.renderPanel_MouseUp);
+            this.renderPanel.Resize += new System.EventHandler(this.renderPanel_Resize);
             // 
             // framesTrackBar
             // 
@@ -166,10 +158,17 @@ namespace perfvis
             this.framesTrackBar.TickStyle = System.Windows.Forms.TickStyle.Both;
             this.framesTrackBar.Scroll += new System.EventHandler(this.framesTrackBar_Scroll);
             // 
-            // toolStripSeparator1
+            // fontSizeTrackBar
             // 
-            this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(177, 6);
+            this.fontSizeTrackBar.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.fontSizeTrackBar.Location = new System.Drawing.Point(447, 350);
+            this.fontSizeTrackBar.Minimum = 5;
+            this.fontSizeTrackBar.Name = "fontSizeTrackBar";
+            this.fontSizeTrackBar.Size = new System.Drawing.Size(80, 45);
+            this.fontSizeTrackBar.TabIndex = 2;
+            this.fontSizeTrackBar.TickStyle = System.Windows.Forms.TickStyle.TopLeft;
+            this.fontSizeTrackBar.Value = 8;
+            this.fontSizeTrackBar.Scroll += new System.EventHandler(this.trackBar2_Scroll);
             // 
             // Form1
             // 
@@ -190,8 +189,8 @@ namespace perfvis
             this.statusStrip1.PerformLayout();
             this.renderPanel.ResumeLayout(false);
             this.renderPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.fontSizeTrackBar)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.framesTrackBar)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.fontSizeTrackBar)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 

@@ -24,9 +24,15 @@ namespace perfvis
         private Pen defaultPen = Pens.Black;
         private Brush defaultBrush = Brushes.Black;
 
+        private BufferedGraphicsContext currentContext;
+        private BufferedGraphics renderPanelBuffer;
+
         public Form1()
         {
             InitializeComponent();
+
+            currentContext = BufferedGraphicsManager.Current;
+            renderPanelBuffer = currentContext.Allocate(CreateGraphics(), renderPanel.DisplayRectangle);
         }
 
         private void Form1_Load(object sender, System.EventArgs e)
@@ -39,8 +45,10 @@ namespace perfvis
             setStatusText("Ready. Press \"File -> Open\" to open profile data");
         }
 
-        private void renderPanel_Paint(object sender, PaintEventArgs e)
+        private void renderToBuffer(Graphics g)
         {
+            g.Clear(renderPanel.BackColor);
+
             Font taskFont = new Font(FontFamily.GenericMonospace, fontSize);
 
             PointF viewportStartPos = new PointF(renderViewportCoordinates.Left, renderViewportCoordinates.Top);
@@ -55,13 +63,13 @@ namespace perfvis
             long minVisibleTime = getTimeFromPosition(renderViewportCoordinates.Left - drawShift.X, timeScale);
             long maxVisibleTime = getTimeFromPosition(renderViewportCoordinates.Right - drawShift.X, timeScale);
 
-            e.Graphics.DrawLine(defaultPen, renderViewportCoordinates.Left, renderViewportCoordinates.Top, renderViewportCoordinates.Right, renderViewportCoordinates.Top);
+            g.DrawLine(defaultPen, renderViewportCoordinates.Left, renderViewportCoordinates.Top, renderViewportCoordinates.Right, renderViewportCoordinates.Top);
             for (int frameIndex = 0; frameIndex < visualCaches.frameStartTimes.Count; frameIndex++)
             {
                 long frameStart = visualCaches.frameStartTimes[frameIndex];
                 float posX = viewportStartPos.X + getPositionFromTime(frameStart, timeScale) + drawShift.X;
-                e.Graphics.DrawLine(defaultPen, posX, renderViewportCoordinates.Top, posX, renderViewportCoordinates.Top + 10);
-                e.Graphics.DrawString(string.Format("Frame{0}", frameIndex), taskFont, defaultBrush, new Point((int)posX, (int)renderViewportCoordinates.Top));
+                g.DrawLine(defaultPen, posX, renderViewportCoordinates.Top, posX, renderViewportCoordinates.Top + 10);
+                g.DrawString(string.Format("Frame{0}", frameIndex), taskFont, defaultBrush, new Point((int)posX, (int)renderViewportCoordinates.Top));
             }
 
             foreach (FrameData frame in performanceData.frames)
@@ -69,14 +77,14 @@ namespace perfvis
                 foreach (TaskData taskData in frame.tasks)
                 {
                     int posY = getThreadYPos(taskData.threadId, threadLineTotalHeight, viewportStartPos);
-                    renderTaskData(e.Graphics, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, posY, threadHeight, taskFont);
+                    renderTaskData(g, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, posY, threadHeight, taskFont);
                 }
             }
 
             foreach (TaskData taskData in performanceData.nonFrameTasks)
             {
                 int posY = getThreadYPos(taskData.threadId, threadLineTotalHeight, viewportStartPos);
-                renderTaskData(e.Graphics, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, posY, threadHeight, taskFont);
+                renderTaskData(g, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, posY, threadHeight, taskFont);
             }
 
             foreach (ScopeThreadRecords scopeThreadRecords in performanceData.scopeRecords)
@@ -84,7 +92,7 @@ namespace perfvis
                 int threadPosY = getThreadYPos(scopeThreadRecords.threadId, threadLineTotalHeight, viewportStartPos) + (int)threadHeight;
                 foreach (ScopeRecord record in scopeThreadRecords.records)
                 {
-                    renderScopeRecord(e.Graphics, record, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadPosY, scopeRecordHeight, taskFont);
+                    renderScopeRecord(g, record, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadPosY, scopeRecordHeight, taskFont);
                 }
             }
         }
@@ -139,7 +147,7 @@ namespace perfvis
             if (e.ScrollOrientation == ScrollOrientation.VerticalScroll)
             {
                 scale *= (e.NewValue - e.OldValue);
-                renderPanel.Invalidate();
+                render();
             }
         }
 
@@ -153,7 +161,7 @@ namespace perfvis
             drawShift.X = drawShift.X * scale / previousScale - (scaleCenterPosition.X * scale / previousScale - scaleCenterPosition.X);
             drawShift.Y = drawShift.Y * scale / previousScale - (scaleCenterPosition.Y * scale / previousScale - scaleCenterPosition.Y);
 
-            renderPanel.Invalidate();
+            render();
         }
 
         private void openPerfFileDialog_FileOk(object sender, System.ComponentModel.CancelEventArgs e)
@@ -163,7 +171,7 @@ namespace perfvis
             {
                 performanceData = PerformanceDataJsonReader.ReadFromJson(openPerfFileDialog.FileName);
                 visualCaches.updateFromData(performanceData);
-                renderPanel.Invalidate();
+                render();
             }
             catch (System.Exception exception)
             {
@@ -203,14 +211,15 @@ namespace perfvis
                 drawShift.Y += e.Y - lastMouseLocation.Y;
                 lastMouseLocation.X = e.X;
                 lastMouseLocation.Y = e.Y;
-                renderPanel.Invalidate();
+                render();
             }
         }
 
         private void renderPanel_Resize(object sender, System.EventArgs e)
         {
+            renderPanelBuffer = currentContext.Allocate(CreateGraphics(), renderPanel.DisplayRectangle);
             updateRenderViewportSize();
-            renderPanel.Invalidate();
+            render();
         }
 
         private void setStatusText(string newStatusText)
@@ -221,7 +230,7 @@ namespace perfvis
         private void trackBar2_Scroll(object sender, System.EventArgs e)
         {
             fontSize = fontSizeTrackBar.Value;
-            renderPanel.Invalidate();
+            render();
         }
 
         private void framesTrackBar_Scroll(object sender, System.EventArgs e)
@@ -229,7 +238,7 @@ namespace perfvis
             if (framesTrackBar.Value >= 0 && framesTrackBar.Value < visualCaches.frameStartTimes.Count)
             {
                 drawShift.X = -getPositionFromTime(visualCaches.frameStartTimes[framesTrackBar.Value], getTimeScale());
-                renderPanel.Invalidate();
+                render();
             }
         }
 
@@ -256,6 +265,13 @@ namespace perfvis
         private float getTimeScale()
         {
             return renderViewportCoordinates.Width / visualCaches.averageFrameDuration * scale;
+        }
+
+        private void render()
+        {
+            renderToBuffer(renderPanelBuffer.Graphics);
+            renderPanelBuffer.Render();
+            renderPanelBuffer.Render(renderPanel.CreateGraphics());
         }
     }
 }
