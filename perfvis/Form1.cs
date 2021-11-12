@@ -43,6 +43,8 @@ namespace perfvis
             updateRenderViewportSize();
 
             setStatusText("Ready. Press \"File -> Open\" to open profile data");
+
+            renderPanel.MouseWheel += new MouseEventHandler(renderPanel_MouseWheel);
         }
 
         private void renderToBuffer(Graphics g)
@@ -140,26 +142,26 @@ namespace perfvis
             renderViewportCoordinates.Height = renderPanel.Height;
         }
 
-        private void Form1_Scroll(object sender, ScrollEventArgs e)
+        private void trackBar1_Scroll(object sender, System.EventArgs e)
         {
-            if (e.ScrollOrientation == ScrollOrientation.VerticalScroll)
-            {
-                scale *= (e.NewValue - e.OldValue);
-                render();
-            }
+            PointF scaleCenterPosition = new PointF(renderViewportCoordinates.Width / 2.0f, renderViewportCoordinates.Height / 2.0f);
+            scaleInto(scaleCenterPosition, getScaleFromScroll());
+
+            render();
         }
 
-        private void trackBar1_Scroll(object sender, System.EventArgs e)
+        private float getScaleFromScroll()
+        {
+            return (1 + scaleTrackBar.Value) / ((scaleTrackBar.Maximum + 2) * 0.5f); ;
+        }
+
+        private void scaleInto(PointF scaleCenterPosition, float newScale)
         {
             float previousScale = scale;
             scale = (1 + scaleTrackBar.Value) / ((scaleTrackBar.Maximum + 2) * 0.5f);
 
-            PointF scaleCenterPosition = new PointF(renderViewportCoordinates.Width / 2.0f, renderViewportCoordinates.Height / 2.0f);
-
             drawShift.X = drawShift.X * scale / previousScale - (scaleCenterPosition.X * scale / previousScale - scaleCenterPosition.X);
             drawShift.Y = drawShift.Y * scale / previousScale - (scaleCenterPosition.Y * scale / previousScale - scaleCenterPosition.Y);
-
-            render();
         }
 
         private void openPerfFileDialog_FileOk(object sender, System.ComponentModel.CancelEventArgs e)
@@ -269,6 +271,23 @@ namespace perfvis
             renderToBuffer(renderPanelBuffer.Graphics);
             renderPanelBuffer.Render();
             renderPanelBuffer.Render(renderPanel.CreateGraphics());
+        }
+
+        private void renderPanel_MouseWheel(object sender, MouseEventArgs e)
+        {
+            if (e.Delta > 0)
+            {
+                scaleTrackBar.Value = Math.Min(scaleTrackBar.Value + 1, scaleTrackBar.Maximum);
+            }
+            else
+            {
+                scaleTrackBar.Value = Math.Max(scaleTrackBar.Value - 1, scaleTrackBar.Minimum);
+            }
+
+            PointF scaleCenterPosition = new PointF(e.X - renderViewportCoordinates.X, e.Y - renderViewportCoordinates.Y);
+            scaleInto(scaleCenterPosition, getScaleFromScroll());
+
+            render();
         }
     }
 }

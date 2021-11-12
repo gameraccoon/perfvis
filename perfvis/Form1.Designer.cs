@@ -53,10 +53,11 @@ namespace perfvis
             // scaleTrackBar
             // 
             this.scaleTrackBar.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.scaleTrackBar.Location = new System.Drawing.Point(533, 350);
+            this.scaleTrackBar.Location = new System.Drawing.Point(752, 131);
             this.scaleTrackBar.Maximum = 30;
             this.scaleTrackBar.Name = "scaleTrackBar";
-            this.scaleTrackBar.Size = new System.Drawing.Size(264, 45);
+            this.scaleTrackBar.Orientation = System.Windows.Forms.Orientation.Vertical;
+            this.scaleTrackBar.Size = new System.Drawing.Size(45, 264);
             this.scaleTrackBar.TabIndex = 1;
             this.scaleTrackBar.TickStyle = System.Windows.Forms.TickStyle.Both;
             this.scaleTrackBar.Value = 15;
@@ -161,7 +162,7 @@ namespace perfvis
             // fontSizeTrackBar
             // 
             this.fontSizeTrackBar.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.fontSizeTrackBar.Location = new System.Drawing.Point(447, 350);
+            this.fontSizeTrackBar.Location = new System.Drawing.Point(666, 350);
             this.fontSizeTrackBar.Minimum = 5;
             this.fontSizeTrackBar.Name = "fontSizeTrackBar";
             this.fontSizeTrackBar.Size = new System.Drawing.Size(80, 45);
