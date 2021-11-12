@@ -57,6 +57,14 @@ namespace perfvis.Caches
                 }
             }
 
+            foreach (ScopeThreadRecords scopeThreadRecords in data.scopeRecords)
+            {
+                if (!threads.Contains(scopeThreadRecords.threadId))
+                {
+                    threads.Add(scopeThreadRecords.threadId);
+                }
+            }
+
             totalDuration = maxTime - minTime;
             averageFrameDuration = Convert.ToInt64(tempAverageFrameDuration);
         }
