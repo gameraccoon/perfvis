@@ -104,10 +104,7 @@ namespace perfvis
                 Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(taskData.timeStart, timeScale) + drawShift.X), posY);
                 Size boxSize = new Size((int)scaleTimeToScreen(taskData.timeFinish - taskData.timeStart, timeScale), (int)threadHeight);
                 g.DrawRectangle(defaultPen, new Rectangle(boxStartPos, boxSize));
-
-                float offsettedX = Math.Max(boxStartPos.X, (int)renderViewportCoordinates.Left);
-                RectangleF textRectangle = new RectangleF(offsettedX, boxStartPos.Y, boxSize.Width, boxSize.Height);
-                g.DrawString(performanceData.taskNames[taskData.taskNameIdx], taskFont, defaultBrush, textRectangle);
+                renderTextForBox(g, performanceData.taskNames[taskData.taskNameIdx], boxStartPos, boxSize, taskFont);
             }
         }
 
@@ -118,14 +115,15 @@ namespace perfvis
                 Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(scopeRecord.timeStart, timeScale) + drawShift.X), (int)(threadPosY + scopeRecordHeight * scopeRecord.stackDepth));
                 Size boxSize = new Size((int)scaleTimeToScreen(scopeRecord.timeFinish - scopeRecord.timeStart, timeScale), (int)scopeRecordHeight);
                 g.DrawRectangle(defaultPen, new Rectangle(boxStartPos, boxSize));
-
-                RectangleF textRectangle = new RectangleF(boxStartPos.X, boxStartPos.Y, boxSize.Width, boxSize.Height);
-                g.DrawString(scopeRecord.scopeName, taskFont, defaultBrush, textRectangle);
+                renderTextForBox(g, scopeRecord.scopeName, boxStartPos, boxSize, taskFont);
             }
         }
 
-        private void drawTextForBox()
+        private void renderTextForBox(Graphics g, string text, Point boxStartPos, Size boxSize, Font taskFont)
         {
+            float offsettedX = Math.Max(boxStartPos.X, (int)renderViewportCoordinates.Left);
+            RectangleF textRectangle = new RectangleF(offsettedX, boxStartPos.Y, boxSize.Width, boxSize.Height);
+            g.DrawString(text, taskFont, defaultBrush, textRectangle);
         }
 
         private int getThreadYPos(int threadId, float threadLineTotalHeight, PointF viewportStartPos)
@@ -166,7 +164,6 @@ namespace perfvis
 
         private void openPerfFileDialog_FileOk(object sender, System.ComponentModel.CancelEventArgs e)
         {
-
             try
             {
                 performanceData = PerformanceDataJsonReader.ReadFromJson(openPerfFileDialog.FileName);
