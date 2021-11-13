@@ -55,7 +55,7 @@ namespace perfvis
         private BufferedGraphics renderPanelBuffer;
 
         private TaskSelection hoveredTask;
-        private const float maxMoveDeltaToSelect = 10.0f;
+        private const float maxMoveDeltaToSelect = 2.0f;
         private const float maxMoveDeltaToSelectSqr = maxMoveDeltaToSelect * maxMoveDeltaToSelect;
         private bool moveExceededSelectRange = false;
         private Point mouseDownPos = new Point();
@@ -287,14 +287,13 @@ namespace perfvis
 
             if (!moveExceededSelectRange)
             {
-                TaskData hoveredTaskData = getTaskFromSelectaion(hoveredTask);
-                if (hoveredTaskData != null)
+                int threadIndex = getThreadIdxFromPosition(e.Y);
+                if (threadIndex >= 0 && threadIndex < threadStackFoldings.Count && isPosInsideThreadBlock(e.Y, threadIndex))
                 {
-                    int threadIndex = visualCaches.threads.IndexOf(hoveredTaskData.threadId);
                     threadStackFoldings[threadIndex] = !threadStackFoldings[threadIndex];
                     updateThreadHeights();
+                    render();
                 }
-                render();
             }
         }
 
