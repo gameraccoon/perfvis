@@ -45,45 +45,45 @@
 			]
 		}
 	],
-    "nonFrameTasks": [
-        {
-            "threadId": 4,
-            "timeStart": 350,
-            "timeFinish": 600,
-            "taskNameIdx": 3
-        },
-        {
-            "threadId": 5,
-            "timeStart": 430,
-            "timeFinish": 650,
-            "taskNameIdx": 4
-        },
-    ],
+	"nonFrameTasks": [
+		{
+			"threadId": 4,
+			"timeStart": 350,
+			"timeFinish": 600,
+			"taskNameIdx": 3
+		},
+		{
+			"threadId": 5,
+			"timeStart": 430,
+			"timeFinish": 650,
+			"taskNameIdx": 4
+		},
+	],
 	"scopeRecords": [
-        {
-            "records": [
-                {
-                    "stackDepth": 1,
-                    "timeStart": 360,
-                    "timeFinish": 400,
-                    "scopeName": "Function1"
-                },
-                {
-                    "stackDepth": 1,
-                    "timeStart": 401,
-                    "timeFinish": 420,
-                    "scopeName": "Function2"
-                },
-                {
-                    "stackDepth": 2,
-                    "timeStart": 363,
-                    "timeFinish": 390,
-                    "scopeName": "Function3"
-                }
-            ],
-            "threadId": 4
-        }
-    ],
+		{
+			"records": [
+				{
+					"stackDepth": 1,
+					"timeStart": 360,
+					"timeFinish": 400,
+					"scopeName": "Function1"
+				},
+				{
+					"stackDepth": 1,
+					"timeStart": 401,
+					"timeFinish": 420,
+					"scopeName": "Function2"
+				},
+				{
+					"stackDepth": 2,
+					"timeStart": 363,
+					"timeFinish": 390,
+					"scopeName": "Function3"
+				}
+			],
+			"threadId": 4
+		}
+	],
 	"taskNames": [
 		"Task1",
 		"Task2",
