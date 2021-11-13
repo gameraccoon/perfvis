@@ -12,11 +12,13 @@ namespace perfvis.Caches
         public long totalDuration = 0;
         public long averageFrameDuration = 0;
         public List<long> frameStartTimes = new List<long>();
+        public List<int> scopedRecordsDepthByThread = new List<int>();
 
         public void updateFromData(PerformanceData data)
         {
             threads.Clear();
             frameStartTimes.Clear();
+            scopedRecordsDepthByThread.Clear();
 
             minTime = long.MaxValue;
             maxTime = long.MinValue;
@@ -32,6 +34,7 @@ namespace perfvis.Caches
                     if (!threads.Contains(taskData.threadId))
                     {
                         threads.Add(taskData.threadId);
+                        scopedRecordsDepthByThread.Add(0);
                     }
 
                     minStartTime = Math.Min(minStartTime, taskData.timeStart);
@@ -51,18 +54,28 @@ namespace perfvis.Caches
                 if (!threads.Contains(taskData.threadId))
                 {
                     threads.Add(taskData.threadId);
-
-                    minTime = Math.Min(minTime, taskData.timeStart);
-                    maxTime = Math.Max(maxTime, taskData.timeFinish);
+                    scopedRecordsDepthByThread.Add(0);
                 }
+
+                minTime = Math.Min(minTime, taskData.timeStart);
+                maxTime = Math.Max(maxTime, taskData.timeFinish);
             }
 
             foreach (ScopeThreadRecords scopeThreadRecords in data.scopeRecords)
             {
+                int maxStackDepth = 0;
                 if (!threads.Contains(scopeThreadRecords.threadId))
                 {
                     threads.Add(scopeThreadRecords.threadId);
+                    scopedRecordsDepthByThread.Add(0);
                 }
+
+                foreach (ScopeRecord record in scopeThreadRecords.records)
+                {
+                    maxStackDepth = Math.Max(maxStackDepth, record.stackDepth);
+                }
+
+                scopedRecordsDepthByThread[threads.IndexOf(scopeThreadRecords.threadId)] = maxStackDepth;
             }
 
             totalDuration = maxTime - minTime;

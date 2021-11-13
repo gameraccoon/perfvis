@@ -1,6 +1,7 @@
 ﻿using perfvis.Caches;
 using perfvis.Model;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -58,6 +59,9 @@ namespace perfvis
         private const float maxMoveDeltaToSelectSqr = maxMoveDeltaToSelect * maxMoveDeltaToSelect;
         private bool moveExceededSelectRange = false;
         private Point mouseDownPos = new Point();
+
+        private List<bool> threadStackFoldings = new List<bool>();
+        private List<int> cachedThreadHeights = new List<int>();
 
         public Form1()
         {
@@ -120,10 +124,13 @@ namespace perfvis
 
             foreach (ScopeThreadRecords scopeThreadRecords in performanceData.scopeRecords)
             {
-                int threadPosY = getThreadYPos(scopeThreadRecords.threadId, viewportStartPos) + (int)(threadHeight * scale);
-                foreach (ScopeRecord record in scopeThreadRecords.records)
+                if (threadStackFoldings[visualCaches.threads.IndexOf(scopeThreadRecords.threadId)])
                 {
-                    renderScopeRecord(g, record, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadPosY, taskFont);
+                    int threadPosY = getThreadYPos(scopeThreadRecords.threadId, viewportStartPos) + (int)(threadHeight * scale);
+                    foreach (ScopeRecord record in scopeThreadRecords.records)
+                    {
+                        renderScopeRecord(g, record, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadPosY, taskFont);
+                    }
                 }
             }
         }
@@ -177,21 +184,32 @@ namespace perfvis
 
         private int getThreadYPosByIndex(int threadIndex, PointF viewportStartPos)
         {
-            return (int)(viewportStartPos.Y + threadIndex * threadLineTotalHeight * scale + drawShift.Y);
+            if (threadIndex >= 0 && threadIndex < cachedThreadHeights.Count)
+            {
+                return (int)(viewportStartPos.Y + cachedThreadHeights[threadIndex] * scale + drawShift.Y);
+            }
+            return 0;
         }
 
         private int getThreadIdxFromPosition(float positionY)
         {
-            PointF viewportStartPos = new PointF(renderViewportCoordinates.Left, renderViewportCoordinates.Top);
-            return (int)Math.Floor((positionY - viewportStartPos.Y - drawShift.Y) / (threadLineTotalHeight * scale));
+            float relativePosY = (positionY - drawShift.Y) / scale;
+            for (int i = cachedThreadHeights.Count - 1; i >= 0; i--)
+            {
+                if (relativePosY >= cachedThreadHeights[i])
+                {
+                    return i;
+                }
+            }
+            return -1;
         }
 
         private bool isPosInsideThreadBlock(float mouseY, int threadIdx)
         {
             PointF viewportStartPos = new PointF(renderViewportCoordinates.Left, renderViewportCoordinates.Top);
             float threadMin = getThreadYPosByIndex(threadIdx, viewportStartPos);
-            float threadMax = threadMin + threadHeight;
-            return threadMin < mouseY && mouseY < threadMax;
+            float threadMax = threadMin + threadHeight * scale;
+            return threadMin < mouseY && mouseY <= threadMax;
         }
 
         private void updateRenderViewportSize()
@@ -230,6 +248,9 @@ namespace perfvis
             {
                 performanceData = PerformanceDataJsonReader.ReadFromJson(openPerfFileDialog.FileName);
                 visualCaches.updateFromData(performanceData);
+                threadStackFoldings = new List<bool>(new bool[visualCaches.threads.Count]);
+                cachedThreadHeights = new List<int>(new int[visualCaches.threads.Count]);
+                updateThreadHeights();
                 render();
             }
             catch (System.Exception exception)
@@ -266,7 +287,14 @@ namespace perfvis
 
             if (!moveExceededSelectRange)
             {
-                //render();
+                TaskData hoveredTaskData = getTaskFromSelectaion(hoveredTask);
+                if (hoveredTaskData != null)
+                {
+                    int threadIndex = visualCaches.threads.IndexOf(hoveredTaskData.threadId);
+                    threadStackFoldings[threadIndex] = !threadStackFoldings[threadIndex];
+                    updateThreadHeights();
+                }
+                render();
             }
         }
 
@@ -446,6 +474,22 @@ namespace perfvis
             else
             {
                 return performanceData.nonFrameTasks[selection.taskIdx];
+            }
+        }
+
+        private void updateThreadHeights()
+        {
+            int height = 0;
+            for (int i = 0; i < visualCaches.threads.Count; i++)
+            {
+                cachedThreadHeights[i] = height;
+
+                height += (int)threadLineTotalHeight;
+
+                if (threadStackFoldings[i])
+                {
+                    height += (int)(visualCaches.scopedRecordsDepthByThread[i] * scopeRecordHeight + scopeRecordHeight);
+                }
             }
         }
     }

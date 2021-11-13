@@ -64,21 +64,44 @@
 			"records": [
 				{
 					"stackDepth": 1,
+					"timeStart": 304,
+					"timeFinish": 398,
+					"scopeName": "Function1"
+				},
+				{
+					"stackDepth": 2,
+					"timeStart": 306,
+					"timeFinish": 390,
+					"scopeName": "Function2"
+				},
+				{
+					"stackDepth": 3,
+					"timeStart": 320,
+					"timeFinish": 340,
+					"scopeName": "Function3"
+				}
+			],
+			"threadId": 0
+		},
+		{
+			"records": [
+				{
+					"stackDepth": 1,
 					"timeStart": 360,
 					"timeFinish": 400,
-					"scopeName": "Function1"
+					"scopeName": "Function4"
 				},
 				{
 					"stackDepth": 1,
 					"timeStart": 401,
 					"timeFinish": 420,
-					"scopeName": "Function2"
+					"scopeName": "Function5"
 				},
 				{
 					"stackDepth": 2,
 					"timeStart": 363,
 					"timeFinish": 390,
-					"scopeName": "Function3"
+					"scopeName": "Function6"
 				}
 			],
 			"threadId": 4
