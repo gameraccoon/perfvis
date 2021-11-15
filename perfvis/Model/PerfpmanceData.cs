@@ -38,11 +38,18 @@ namespace perfvis.Model
         public List<ScopeRecord> records = new List<ScopeRecord>();
     }
 
+    class PerfConfig
+    {
+        public string timeUnit = "ms";
+        public double timeUnitScale = 1000000.0f;
+    }
+
     class PerformanceData
     {
         public List<FrameData> frames = new List<FrameData>();
         public List<string> taskNames = new List<string>();
         public List<TaskData> nonFrameTasks = new List<TaskData>();
         public List<ScopeThreadRecords> scopeRecords = new List<ScopeThreadRecords>();
+        public PerfConfig config = new PerfConfig();
     }
 }

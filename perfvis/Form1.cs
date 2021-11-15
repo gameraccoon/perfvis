@@ -45,6 +45,8 @@ namespace perfvis
         private const float threadVerticalSpacing = 10.0f;
         private const float threadLineTotalHeight = threadHeight + threadVerticalSpacing;
 
+        private const float minimalTimeSize = 100.0f;
+
         private bool isMouseDown = false;
         private Point lastMouseLocation = new Point(0, 0);
 
@@ -102,14 +104,8 @@ namespace perfvis
             TaskData hoveredTaskData = getTaskFromSelectaion(hoveredElement);
             ScopeRecord hoveredScopeRecord = getScopeRecordFromSelection(hoveredElement);
 
-            g.DrawLine(defaultPen, renderViewportCoordinates.Left, renderViewportCoordinates.Top, renderViewportCoordinates.Right, renderViewportCoordinates.Top);
-            for (int frameIndex = 0; frameIndex < visualCaches.frameStartTimes.Count; frameIndex++)
-            {
-                long frameStart = visualCaches.frameStartTimes[frameIndex];
-                float posX = viewportStartPos.X + getPositionFromTime(frameStart, timeScale) + drawShift.X;
-                g.DrawLine(defaultPen, posX, renderViewportCoordinates.Top, posX, renderViewportCoordinates.Top + 10);
-                g.DrawString(string.Format("Frame{0}", frameIndex), taskFont, defaultBrush, new Point((int)posX, (int)renderViewportCoordinates.Top));
-            }
+            renderTimeRuler(g, viewportStartPos, taskFont, timeScale);
+            renderFrameRuler(g, viewportStartPos, taskFont, timeScale);
 
             foreach (FrameData frame in performanceData.frames)
             {
@@ -194,6 +190,40 @@ namespace perfvis
             {
                 RectangleF textRectangle = new RectangleF(positionX, boxStartPos.Y, width, height);
                 g.DrawString(text, taskFont, defaultBrush, textRectangle);
+            }
+        }
+
+        private void renderTimeRuler(Graphics g, PointF viewportStartPos, Font taskFont, float timeScale)
+        {
+            long globalTimeStart = visualCaches.minTime;
+            long timeMin = getTimeFromPosition(renderViewportCoordinates.Left - drawShift.X, timeScale) - globalTimeStart;
+            long timeMax = getTimeFromPosition(renderViewportCoordinates.Right - drawShift.X, timeScale) - globalTimeStart;
+
+            double oneUnitScale = performanceData.config.timeUnitScale;
+
+            double itemsCanFit = renderViewportCoordinates.Width / minimalTimeSize;
+            double itemSize = floorToPowerOf(Math.Max(1, (timeMax - timeMin) / itemsCanFit) / oneUnitScale, 10.0) * oneUnitScale;
+
+            double timeStart = (long)Math.Ceiling((double)timeMin / itemSize) * itemSize;
+            double timeStep = itemSize;
+
+            g.DrawLine(defaultPen, renderViewportCoordinates.Left, renderViewportCoordinates.Top, renderViewportCoordinates.Right, renderViewportCoordinates.Top);
+            for (double timePoint = timeStart; timePoint < timeMax; timePoint += timeStep)
+            {
+                float posX = viewportStartPos.X + getPositionFromTime(globalTimeStart + (long)timePoint, timeScale) + drawShift.X;
+                g.DrawLine(defaultPen, posX, renderViewportCoordinates.Top, posX, renderViewportCoordinates.Top + 10);
+                g.DrawString(string.Format("{0} " + performanceData.config.timeUnit, timePoint / oneUnitScale), taskFont, defaultBrush, new Point((int)posX + 2, (int)renderViewportCoordinates.Top));
+            }
+        }
+
+        private void renderFrameRuler(Graphics g, PointF viewportStartPos, Font taskFont, float timeScale)
+        {
+            for (int frameIndex = 0; frameIndex < visualCaches.frameStartTimes.Count; frameIndex++)
+            {
+                long frameStart = visualCaches.frameStartTimes[frameIndex];
+                float posX = viewportStartPos.X + getPositionFromTime(frameStart, timeScale) + drawShift.X;
+                g.DrawLine(defaultPen, posX, renderViewportCoordinates.Top + 10, posX, renderViewportCoordinates.Top + 20);
+                g.DrawString(string.Format("Frame{0}", frameIndex), taskFont, defaultBrush, new Point((int)posX + 2, (int)renderViewportCoordinates.Top + 12));
             }
         }
 
@@ -555,6 +585,11 @@ namespace perfvis
         {
             int threadYPos = getThreadYPosByIndex(threadIdx);
             return (int)Math.Floor((positionY - threadYPos - threadLineTotalHeight * scale) / (scopeRecordHeight * scale)) + 1;
+        }
+
+        private double floorToPowerOf(double value, double power)
+        {
+            return Math.Pow(power, Math.Ceiling(Math.Log(value, power)));
         }
     }
 }

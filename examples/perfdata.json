@@ -113,5 +113,9 @@
 		"Task3",
 		"Non-frame task1",
 		"Non-frame task2"
-	]
+	],
+	"config" : {
+		"timeUnit" : "ms",
+		"timeUnitScale" : 100.0
+	}
 }
