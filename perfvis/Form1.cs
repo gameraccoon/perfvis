@@ -10,24 +10,25 @@ namespace perfvis
 {
     public partial class Form1 : Form
     {
-        private class TaskSelection
+        private class Selection
         {
-            public TaskSelection(Type type, int frameIdx, int taskIdx)
+            public Selection(Type type, int groupIdx, int recordIdx)
             {
                 this.type = type;
-                this.frameIdx = frameIdx;
-                this.taskIdx = taskIdx;
+                this.groupIdx = groupIdx;
+                this.recordIdx = recordIdx;
             }
 
             public enum Type
             {
                 ThreadTask,
-                NonThreadTask
+                NonThreadTask,
+                ScopeRecord
             }
 
             public Type type;
-            public int frameIdx;
-            public int taskIdx;
+            public int groupIdx;
+            public int recordIdx;
         }
 
         private PerformanceData performanceData = new PerformanceData();
@@ -37,6 +38,7 @@ namespace perfvis
         private PointF drawShift = new PointF();
         private float scale = 1.0f;
         private int fontSize = 8;
+        private const int defaultScopeFontSize = 6;
 
         private const float threadHeight = 50.0f;
         private const float scopeRecordHeight = 10.0f;
@@ -49,12 +51,12 @@ namespace perfvis
         private Pen defaultPen = Pens.Black;
         private Brush defaultBrush = Brushes.Black;
         private SolidBrush taskBrush = new System.Drawing.SolidBrush(System.Drawing.Color.Snow);
-        private SolidBrush hoveredTaskBrush = new System.Drawing.SolidBrush(System.Drawing.Color.CornflowerBlue);
+        private SolidBrush hoveredElementBrush = new System.Drawing.SolidBrush(System.Drawing.Color.CornflowerBlue);
 
         private BufferedGraphicsContext currentContext;
         private BufferedGraphics renderPanelBuffer;
 
-        private TaskSelection hoveredTask;
+        private Selection hoveredElement;
         private const float maxMoveDeltaToSelect = 2.0f;
         private const float maxMoveDeltaToSelectSqr = maxMoveDeltaToSelect * maxMoveDeltaToSelect;
         private bool moveExceededSelectRange = false;
@@ -88,6 +90,7 @@ namespace perfvis
             g.Clear(renderPanel.BackColor);
 
             Font taskFont = new Font(FontFamily.GenericMonospace, fontSize);
+            Font scopeRecordFont = new Font(FontFamily.GenericMonospace, defaultScopeFontSize * scale);
 
             PointF viewportStartPos = new PointF(renderViewportCoordinates.Left, renderViewportCoordinates.Top);
 
@@ -96,7 +99,8 @@ namespace perfvis
             long minVisibleTime = getTimeFromPosition(renderViewportCoordinates.Left - drawShift.X, timeScale);
             long maxVisibleTime = getTimeFromPosition(renderViewportCoordinates.Right - drawShift.X, timeScale);
 
-            TaskData hoveredTaskData = getTaskFromSelectaion(hoveredTask);
+            TaskData hoveredTaskData = getTaskFromSelectaion(hoveredElement);
+            ScopeRecord hoveredScopeRecord = getScopeRecordFromSelection(hoveredElement);
 
             g.DrawLine(defaultPen, renderViewportCoordinates.Left, renderViewportCoordinates.Top, renderViewportCoordinates.Right, renderViewportCoordinates.Top);
             for (int frameIndex = 0; frameIndex < visualCaches.frameStartTimes.Count; frameIndex++)
@@ -111,14 +115,14 @@ namespace perfvis
             {
                 foreach (TaskData taskData in frame.tasks)
                 {
-                    int posY = getThreadYPos(taskData.threadId, viewportStartPos);
+                    int posY = getThreadYPos(taskData.threadId);
                     renderTaskData(g, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, posY, taskFont, taskData == hoveredTaskData);
                 }
             }
 
             foreach (TaskData taskData in performanceData.nonFrameTasks)
             {
-                int posY = getThreadYPos(taskData.threadId, viewportStartPos);
+                int posY = getThreadYPos(taskData.threadId);
                 renderTaskData(g, taskData, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, posY, taskFont, taskData == hoveredTaskData);
             }
 
@@ -126,10 +130,10 @@ namespace perfvis
             {
                 if (threadStackFoldings[visualCaches.threads.IndexOf(scopeThreadRecords.threadId)])
                 {
-                    int threadPosY = getThreadYPos(scopeThreadRecords.threadId, viewportStartPos) + (int)(threadHeight * scale);
+                    int threadPosY = getThreadYPos(scopeThreadRecords.threadId) + (int)(threadHeight * scale);
                     foreach (ScopeRecord record in scopeThreadRecords.records)
                     {
-                        renderScopeRecord(g, record, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadPosY, taskFont);
+                        renderScopeRecord(g, record, minVisibleTime, maxVisibleTime, viewportStartPos, timeScale, threadPosY, scopeRecordFont, record == hoveredScopeRecord);
                     }
                 }
             }
@@ -142,7 +146,7 @@ namespace perfvis
                 SolidBrush brush = taskBrush;
                 if (isHovered)
                 {
-                    brush = hoveredTaskBrush;
+                    brush = hoveredElementBrush;
                 }
 
                 Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(taskData.timeStart, timeScale) + drawShift.X), posY);
@@ -153,12 +157,19 @@ namespace perfvis
             }
         }
 
-        private void renderScopeRecord(Graphics g, ScopeRecord scopeRecord, long minVisibleTime, long maxVisibleTime, PointF viewportStartPos, float timeScale, int threadPosY, Font taskFont)
+        private void renderScopeRecord(Graphics g, ScopeRecord scopeRecord, long minVisibleTime, long maxVisibleTime, PointF viewportStartPos, float timeScale, int threadPosY, Font taskFont, bool isHovered)
         {
             if (scopeRecord.timeFinish > minVisibleTime && scopeRecord.timeStart < maxVisibleTime)
             {
+                SolidBrush brush = taskBrush;
+                if (isHovered)
+                {
+                    brush = hoveredElementBrush;
+                }
+
                 Point boxStartPos = new Point((int)(viewportStartPos.X + getPositionFromTime(scopeRecord.timeStart, timeScale) + drawShift.X), (int)(threadPosY + scopeRecordHeight * scale * scopeRecord.stackDepth));
                 Size boxSize = new Size((int)scaleTimeToScreen(scopeRecord.timeFinish - scopeRecord.timeStart, timeScale), (int)(scopeRecordHeight * scale));
+                g.FillRectangle(brush, new Rectangle(boxStartPos, boxSize));
                 g.DrawRectangle(defaultPen, new Rectangle(boxStartPos, boxSize));
                 renderTextForBox(g, scopeRecord.scopeName, boxStartPos, boxSize, taskFont);
             }
@@ -176,17 +187,17 @@ namespace perfvis
             }
         }
 
-        private int getThreadYPos(int threadId, PointF viewportStartPos)
+        private int getThreadYPos(int threadId)
         {
             int threadIndex = visualCaches.threads.IndexOf(threadId);
-            return getThreadYPosByIndex(threadIndex, viewportStartPos);
+            return getThreadYPosByIndex(threadIndex);
         }
 
-        private int getThreadYPosByIndex(int threadIndex, PointF viewportStartPos)
+        private int getThreadYPosByIndex(int threadIndex)
         {
             if (threadIndex >= 0 && threadIndex < cachedThreadHeights.Count)
             {
-                return (int)(viewportStartPos.Y + cachedThreadHeights[threadIndex] * scale + drawShift.Y);
+                return (int)(renderViewportCoordinates.Top + cachedThreadHeights[threadIndex] * scale + drawShift.Y);
             }
             return 0;
         }
@@ -206,8 +217,7 @@ namespace perfvis
 
         private bool isPosInsideThreadBlock(float mouseY, int threadIdx)
         {
-            PointF viewportStartPos = new PointF(renderViewportCoordinates.Left, renderViewportCoordinates.Top);
-            float threadMin = getThreadYPosByIndex(threadIdx, viewportStartPos);
+            float threadMin = getThreadYPosByIndex(threadIdx);
             float threadMax = threadMin + threadHeight * scale;
             return threadMin < mouseY && mouseY <= threadMax;
         }
@@ -409,31 +419,55 @@ namespace perfvis
             long time = getTimeFromPosition(mouseX - drawShift.X, timeScale);
             int threadIdx = getThreadIdxFromPosition(mouseY);
 
-            if (threadIdx >= 0 && threadIdx < visualCaches.threads.Count && isPosInsideThreadBlock(mouseY, threadIdx))
+            if (threadIdx >= 0 && threadIdx < visualCaches.threads.Count)
             {
                 int threadId = visualCaches.threads[threadIdx];
 
-                for (int frameIdx = 0; frameIdx < performanceData.frames.Count; frameIdx++)
+                if (isPosInsideThreadBlock(mouseY, threadIdx))
                 {
-                    FrameData frame = performanceData.frames[frameIdx];
-                    for (int taskIdx = 0; taskIdx < frame.tasks.Count; taskIdx++)
+                    for (int frameIdx = 0; frameIdx < performanceData.frames.Count; frameIdx++)
                     {
-                        TaskData taskData = frame.tasks[taskIdx];
+                        FrameData frame = performanceData.frames[frameIdx];
+                        for (int taskIdx = 0; taskIdx < frame.tasks.Count; taskIdx++)
+                        {
+                            TaskData taskData = frame.tasks[taskIdx];
+                            if (taskData.threadId == threadId && taskData.timeStart < time && time < taskData.timeFinish)
+                            {
+                                updateHoveredElementIfChanged(Selection.Type.ThreadTask, frameIdx, taskIdx);
+                                return;
+                            }
+                        }
+                    }
+
+                    for (int taskIdx = 0; taskIdx < performanceData.nonFrameTasks.Count; taskIdx++)
+                    {
+                        TaskData taskData = performanceData.nonFrameTasks[taskIdx];
                         if (taskData.threadId == threadId && taskData.timeStart < time && time < taskData.timeFinish)
                         {
-                            updateHoveredElementIfChanged(TaskSelection.Type.ThreadTask, frameIdx, taskIdx);
+                            updateHoveredElementIfChanged(Selection.Type.NonThreadTask, 0, taskIdx);
                             return;
                         }
                     }
                 }
 
-                for (int taskIdx = 0; taskIdx < performanceData.nonFrameTasks.Count; taskIdx++)
+                int scopeDepth = getScopeDepthFromYPos(mouseY, threadIdx);
+                if (scopeDepth > 0 && scopeDepth <= visualCaches.scopedRecordsDepthByThread[threadIdx])
                 {
-                    TaskData taskData = performanceData.nonFrameTasks[taskIdx];
-                    if (taskData.threadId == threadId && taskData.timeStart < time && time < taskData.timeFinish)
+                    for (int threadRecordIdx = 0; threadRecordIdx < performanceData.scopeRecords.Count; threadRecordIdx++)
                     {
-                        updateHoveredElementIfChanged(TaskSelection.Type.NonThreadTask, 0, taskIdx);
-                        return;
+                        ScopeThreadRecords scopeThreadRecords = performanceData.scopeRecords[threadRecordIdx];
+                        if (scopeThreadRecords.threadId == threadId)
+                        {
+                            for (int recordIdx = 0; recordIdx < scopeThreadRecords.records.Count; recordIdx++)
+                            {
+                                ScopeRecord record = scopeThreadRecords.records[recordIdx];
+                                if (record.stackDepth == scopeDepth && record.timeStart < time && time < record.timeFinish)
+                                {
+                                    updateHoveredElementIfChanged(Selection.Type.ScopeRecord, threadRecordIdx, recordIdx);
+                                    return;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -441,39 +475,54 @@ namespace perfvis
             resetHoveredElement();
         }
 
-        private void updateHoveredElementIfChanged(TaskSelection.Type type, int frameIdx, int taskIdx)
+        private void updateHoveredElementIfChanged(Selection.Type type, int groupIdx, int recordIdx)
         {
-            if (hoveredTask == null || hoveredTask.type != type || hoveredTask.frameIdx != frameIdx || hoveredTask.taskIdx != taskIdx)
+            if (hoveredElement == null || hoveredElement.type != type || hoveredElement.groupIdx != groupIdx || hoveredElement.recordIdx != recordIdx)
             {
-                hoveredTask = new TaskSelection(type, frameIdx, taskIdx);
+                hoveredElement = new Selection(type, groupIdx, recordIdx);
                 render();
             }
         }
 
         private void resetHoveredElement()
         {
-            if (hoveredTask != null)
+            if (hoveredElement != null)
             {
-                hoveredTask = null;
+                hoveredElement = null;
                 render();
             }
         }
 
-        private TaskData getTaskFromSelectaion(TaskSelection selection)
+        private TaskData getTaskFromSelectaion(Selection selection)
         {
             if (selection == null)
             {
                 return null;
             }
 
-            if (selection.type == TaskSelection.Type.ThreadTask)
+            if (selection.type == Selection.Type.ThreadTask)
             {
-                return performanceData.frames[selection.frameIdx].tasks[selection.taskIdx];
+                return performanceData.frames[selection.groupIdx].tasks[selection.recordIdx];
             }
-            else
+            else if (selection.type == Selection.Type.NonThreadTask)
             {
-                return performanceData.nonFrameTasks[selection.taskIdx];
+                return performanceData.nonFrameTasks[selection.recordIdx];
             }
+            return null;
+        }
+
+        private ScopeRecord getScopeRecordFromSelection(Selection selection)
+        {
+            if (selection == null)
+            {
+                return null;
+            }
+
+            if (selection.type == Selection.Type.ScopeRecord)
+            {
+                return performanceData.scopeRecords[selection.groupIdx].records[selection.recordIdx];
+            }
+            return null;
         }
 
         private void updateThreadHeights()
@@ -490,6 +539,12 @@ namespace perfvis
                     height += (int)(visualCaches.scopedRecordsDepthByThread[i] * scopeRecordHeight + scopeRecordHeight);
                 }
             }
+        }
+
+        private int getScopeDepthFromYPos(float positionY, int threadIdx)
+        {
+            int threadYPos = getThreadYPosByIndex(threadIdx);
+            return (int)Math.Floor((positionY - threadYPos - threadLineTotalHeight * scale) / (scopeRecordHeight * scale)) + 1;
         }
     }
 }
