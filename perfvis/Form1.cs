@@ -137,6 +137,16 @@ namespace perfvis
                     }
                 }
             }
+
+            if (hoveredTaskData != null)
+            {
+                g.DrawString(performanceData.taskNames[hoveredTaskData.taskNameIdx], taskFont, defaultBrush, new Point(30, 30));
+            }
+
+            if (hoveredScopeRecord != null)
+            {
+                g.DrawString(hoveredScopeRecord.scopeName, taskFont, defaultBrush, new Point(30, 30));
+            }
         }
 
         private void renderTaskData(Graphics g, TaskData taskData, long minVisibleTime, long maxVisibleTime, PointF viewportStartPos, float timeScale, int posY, Font taskFont, bool isHovered)
