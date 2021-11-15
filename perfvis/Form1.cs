@@ -54,11 +54,13 @@ namespace perfvis
         private Brush defaultBrush = Brushes.Black;
         private SolidBrush taskBrush = new System.Drawing.SolidBrush(System.Drawing.Color.Snow);
         private SolidBrush hoveredElementBrush = new System.Drawing.SolidBrush(System.Drawing.Color.CornflowerBlue);
+        private SolidBrush threadBgBrush = new System.Drawing.SolidBrush(System.Drawing.Color.Silver);
 
         private BufferedGraphicsContext currentContext;
         private BufferedGraphics renderPanelBuffer;
 
         private Selection hoveredElement;
+        private int hoveredThread = -1;
         private const float maxMoveDeltaToSelect = 2.0f;
         private const float maxMoveDeltaToSelectSqr = maxMoveDeltaToSelect * maxMoveDeltaToSelect;
         private bool moveExceededSelectRange = false;
@@ -104,6 +106,7 @@ namespace perfvis
             TaskData hoveredTaskData = getTaskFromSelectaion(hoveredElement);
             ScopeRecord hoveredScopeRecord = getScopeRecordFromSelection(hoveredElement);
 
+            renderThreadRuler(g, viewportStartPos);
             renderTimeRuler(g, viewportStartPos, taskFont, timeScale);
             renderFrameRuler(g, viewportStartPos, taskFont, timeScale);
 
@@ -227,6 +230,49 @@ namespace perfvis
             }
         }
 
+        private void renderThreadRuler(Graphics g, PointF viewportStartPos)
+        {
+            for (int threadIndex = 0; threadIndex < cachedThreadHeights.Count - 1; threadIndex++)
+            {
+                bool isHovered = (hoveredThread == threadIndex);
+                bool isUnfolded = threadStackFoldings[threadIndex];
+                float posY = viewportStartPos.Y + cachedThreadHeights[threadIndex] * scale + drawShift.Y;
+                float sizeY = cachedThreadHeights[threadIndex + 1] - cachedThreadHeights[threadIndex] - threadVerticalSpacing;
+                float threadRulerWidth = 15;
+                g.FillRectangle(threadBgBrush, renderViewportCoordinates.Left, posY, renderViewportCoordinates.Width, sizeY * scale);
+
+                if (isHovered)
+                {
+                    g.FillRectangle(isHovered ? hoveredElementBrush : taskBrush, 0, posY, threadRulerWidth, sizeY * scale);
+                    if (threadHeight * scale > 14.0f)
+                    {
+                        if (isUnfolded)
+                        {
+                            renderUnfoldedTriangle(g, 6, (int)(posY + 9));
+                        }
+                        else
+                        {
+                            renderFoldedTriangle(g, 7, (int)(posY + 10));
+                        }
+                    }
+                }
+            }
+        }
+
+        private void renderFoldedTriangle(Graphics g, float posX, float posY)
+        {
+            g.DrawLine(defaultPen, posX - 3, posY - 5, posX - 3, posY + 5);
+            g.DrawLine(defaultPen, posX - 3, posY + 5, posX + 2, posY);
+            g.DrawLine(defaultPen, posX + 2, posY, posX - 3, posY - 5);
+        }
+
+        private void renderUnfoldedTriangle(Graphics g, float posX, float posY)
+        {
+            g.DrawLine(defaultPen, posX - 5, posY - 3, posX + 5, posY - 3);
+            g.DrawLine(defaultPen, posX + 5, posY - 3, posX, posY + 2);
+            g.DrawLine(defaultPen, posX, posY + 2, posX - 5, posY - 3);
+        }
+
         private int getThreadYPos(int threadId)
         {
             int threadIndex = visualCaches.threads.IndexOf(threadId);
@@ -245,7 +291,7 @@ namespace perfvis
         private int getThreadIdxFromPosition(float positionY)
         {
             float relativePosY = (positionY - drawShift.Y) / scale;
-            for (int i = cachedThreadHeights.Count - 1; i >= 0; i--)
+            for (int i = cachedThreadHeights.Count - 2; i >= 0; i--)
             {
                 if (relativePosY >= cachedThreadHeights[i])
                 {
@@ -256,6 +302,13 @@ namespace perfvis
         }
 
         private bool isPosInsideThreadBlock(float mouseY, int threadIdx)
+        {
+            float threadMin = getThreadYPosByIndex(threadIdx);
+            float threadMax = getThreadYPosByIndex(threadIdx + 1) - threadVerticalSpacing * scale;
+            return threadMin < mouseY && mouseY <= threadMax;
+        }
+
+        private bool isPosInsideThreadItemBlock(float mouseY, int threadIdx)
         {
             float threadMin = getThreadYPosByIndex(threadIdx);
             float threadMax = threadMin + threadHeight * scale;
@@ -299,7 +352,9 @@ namespace perfvis
                 performanceData = PerformanceDataJsonReader.ReadFromJson(openPerfFileDialog.FileName);
                 visualCaches.updateFromData(performanceData);
                 threadStackFoldings = new List<bool>(new bool[visualCaches.threads.Count]);
-                cachedThreadHeights = new List<int>(new int[visualCaches.threads.Count]);
+                cachedThreadHeights = new List<int>(new int[visualCaches.threads.Count + 1]);
+                hoveredThread = -1;
+                hoveredElement = null;
                 updateThreadHeights();
                 render();
             }
@@ -335,15 +390,11 @@ namespace perfvis
         {
             isMouseDown = false;
 
-            if (!moveExceededSelectRange)
+            if (!moveExceededSelectRange && hoveredThread != -1)
             {
-                int threadIndex = getThreadIdxFromPosition(e.Y);
-                if (threadIndex >= 0 && threadIndex < threadStackFoldings.Count && isPosInsideThreadBlock(e.Y, threadIndex))
-                {
-                    threadStackFoldings[threadIndex] = !threadStackFoldings[threadIndex];
-                    updateThreadHeights();
-                    render();
-                }
+                threadStackFoldings[hoveredThread] = !threadStackFoldings[hoveredThread];
+                updateThreadHeights();
+                render();
             }
         }
 
@@ -370,7 +421,13 @@ namespace perfvis
             }
             else
             {
-                updateHoveredElement(e.X, e.Y);
+                bool needRerender = updateHoveredElement(e.X, e.Y);
+                needRerender |= updateHoveredThreadIfChanged(e.Y);
+
+                if (needRerender)
+                {
+                    render();
+                }
             }
         }
 
@@ -453,41 +510,22 @@ namespace perfvis
             render();
         }
 
-        private void updateHoveredElement(float mouseX, float mouseY)
+        private bool updateHoveredElement(float mouseX, float mouseY)
         {
             float timeScale = getTimeScale();
             long time = getTimeFromPosition(mouseX - drawShift.X, timeScale);
             int threadIdx = getThreadIdxFromPosition(mouseY);
 
+            bool hoverChanged = false;
+
             if (threadIdx >= 0 && threadIdx < visualCaches.threads.Count)
             {
                 int threadId = visualCaches.threads[threadIdx];
 
-                if (isPosInsideThreadBlock(mouseY, threadIdx))
-                {
-                    for (int frameIdx = 0; frameIdx < performanceData.frames.Count; frameIdx++)
-                    {
-                        FrameData frame = performanceData.frames[frameIdx];
-                        for (int taskIdx = 0; taskIdx < frame.tasks.Count; taskIdx++)
-                        {
-                            TaskData taskData = frame.tasks[taskIdx];
-                            if (taskData.threadId == threadId && taskData.timeStart < time && time < taskData.timeFinish)
-                            {
-                                updateHoveredElementIfChanged(Selection.Type.ThreadTask, frameIdx, taskIdx);
-                                return;
-                            }
-                        }
-                    }
+                hoverChanged |= updateHoveredTasks(mouseY, threadIdx, threadId, time);
 
-                    for (int taskIdx = 0; taskIdx < performanceData.nonFrameTasks.Count; taskIdx++)
-                    {
-                        TaskData taskData = performanceData.nonFrameTasks[taskIdx];
-                        if (taskData.threadId == threadId && taskData.timeStart < time && time < taskData.timeFinish)
-                        {
-                            updateHoveredElementIfChanged(Selection.Type.NonThreadTask, 0, taskIdx);
-                            return;
-                        }
-                    }
+                if (hoverChanged) {
+                    return hoverChanged;
                 }
 
                 int scopeDepth = getScopeDepthFromYPos(mouseY, threadIdx);
@@ -504,7 +542,7 @@ namespace perfvis
                                 if (record.stackDepth == scopeDepth && record.timeStart < time && time < record.timeFinish)
                                 {
                                     updateHoveredElementIfChanged(Selection.Type.ScopeRecord, threadRecordIdx, recordIdx);
-                                    return;
+                                    return true;
                                 }
                             }
                         }
@@ -512,7 +550,39 @@ namespace perfvis
                 }
             }
 
-            resetHoveredElement();
+            hoverChanged |= resetHoveredElement();
+            return hoverChanged;
+        }
+
+        private bool updateHoveredTasks(float mouseY, int threadIdx, int threadId, long time)
+        {
+            if (isPosInsideThreadItemBlock(mouseY, threadIdx))
+            {
+                for (int frameIdx = 0; frameIdx < performanceData.frames.Count; frameIdx++)
+                {
+                    FrameData frame = performanceData.frames[frameIdx];
+                    for (int taskIdx = 0; taskIdx < frame.tasks.Count; taskIdx++)
+                    {
+                        TaskData taskData = frame.tasks[taskIdx];
+                        if (taskData.threadId == threadId && taskData.timeStart < time && time < taskData.timeFinish)
+                        {
+                            updateHoveredElementIfChanged(Selection.Type.ThreadTask, frameIdx, taskIdx);
+                            return true;
+                        }
+                    }
+                }
+
+                for (int taskIdx = 0; taskIdx < performanceData.nonFrameTasks.Count; taskIdx++)
+                {
+                    TaskData taskData = performanceData.nonFrameTasks[taskIdx];
+                    if (taskData.threadId == threadId && taskData.timeStart < time && time < taskData.timeFinish)
+                    {
+                        updateHoveredElementIfChanged(Selection.Type.NonThreadTask, 0, taskIdx);
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         private void updateHoveredElementIfChanged(Selection.Type type, int groupIdx, int recordIdx)
@@ -520,17 +590,35 @@ namespace perfvis
             if (hoveredElement == null || hoveredElement.type != type || hoveredElement.groupIdx != groupIdx || hoveredElement.recordIdx != recordIdx)
             {
                 hoveredElement = new Selection(type, groupIdx, recordIdx);
-                render();
             }
         }
 
-        private void resetHoveredElement()
+        private bool updateHoveredThreadIfChanged(float mouseY)
+        {
+            int threadIndex = getThreadIdxFromPosition(mouseY);
+            if (threadIndex != hoveredThread)
+            {
+                if (threadIndex >= 0 && threadIndex < visualCaches.threads.Count && isPosInsideThreadBlock(mouseY, threadIndex))
+                {
+                    hoveredThread = threadIndex;
+                }
+                else
+                {
+                    hoveredThread = -1;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        private bool resetHoveredElement()
         {
             if (hoveredElement != null)
             {
                 hoveredElement = null;
-                render();
+                return true;
             }
+            return false;
         }
 
         private TaskData getTaskFromSelectaion(Selection selection)
@@ -567,6 +655,11 @@ namespace perfvis
 
         private void updateThreadHeights()
         {
+            if (cachedThreadHeights.Count == 0)
+            {
+                return;
+            }
+
             int height = 0;
             for (int i = 0; i < visualCaches.threads.Count; i++)
             {
@@ -579,6 +672,7 @@ namespace perfvis
                     height += (int)(visualCaches.scopedRecordsDepthByThread[i] * scopeRecordHeight + scopeRecordHeight);
                 }
             }
+            cachedThreadHeights[visualCaches.threads.Count] = height;
         }
 
         private int getScopeDepthFromYPos(float positionY, int threadIdx)
